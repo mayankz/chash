@@ -3,7 +3,7 @@ package chash
 import (
 	"crypto/md5"
 	"fmt"
-	"github.com/mayankz/gods/maps/hashmap"
+	//	"github.com/mayankz/gods/maps/hashmap"
 	"github.com/mayankz/gods/maps/treemap"
 	"github.com/mayankz/gods/utils"
 )
@@ -15,21 +15,24 @@ type Node struct {
 
 type HashRing struct {
 	Circle *treemap.Map
-	Nodes  *hashmap.Map
-	Weight uint
-}
-
-func (h *HashRing) PrintStruct() {
-	fmt.Printf("+%v", h)
+	Nodes  *treemap.Map
 }
 
 func New() *HashRing {
 	var h HashRing
 	h.Circle = treemap.NewWith(utils.UInt32Comparator)
-	h.Nodes = hashmap.New()
+	h.Nodes = treemap.NewWithStringComparator()
 	return &h
 }
 
+func NewWithNodes(nodes *treemap.Map) *HashRing {
+	h := New()
+	h.Nodes = nodes
+	h.generateCircle()
+	return h
+}
+
+// returns the node key should belong to, returns false iff ring is empty
 func (h *HashRing) GetNode(key string) (node string, found bool) {
 	bkeyi, ok := h.Circle.GetCeiling(getKetamaKey(key))
 	bkey := bkeyi.(uint32)
@@ -53,19 +56,17 @@ func (h *HashRing) AddNode(node string, weight uint) {
 	}
 
 	h.Nodes.Put(node, weight)
-	h.Weight += weight
-	h.updateCircle(node, true)
+	h.generateCircle()
 }
 
 func (h *HashRing) RemoveNode(node string) {
-	weight, ok := h.Nodes.Get(node)
+	_, ok := h.Nodes.Get(node)
 	if !ok {
 		return
 	}
 
-	h.updateCircle(node, false)
 	h.Nodes.Remove(node)
-	h.Weight -= weight.(uint)
+	h.generateCircle()
 }
 
 func (h *HashRing) UpdateNode(node string, weight uint) {
@@ -73,24 +74,29 @@ func (h *HashRing) UpdateNode(node string, weight uint) {
 	h.AddNode(node, weight)
 }
 
-func (h *HashRing) getBucketsCount(node string) uint {
-	weight, ok := h.Nodes.Get(node)
-	if !ok {
-		return 0
+func (h *HashRing) getNetWeight() uint {
+	weight := (uint)(0)
+	it := h.Nodes.Iterator()
+	for it.Next() {
+		weight += it.Value().(uint)
 	}
-	return 40 * weight.(uint)
+	return weight
 }
 
-func (h *HashRing) updateCircle(node string, add bool) {
-	bucketCount := h.getBucketsCount(node)
-	for i := (uint)(0); i < bucketCount; i++ {
-		bucket := fmt.Sprintf("%s-%d", node, i)
-		keys := getKetamaKeys(bucket)
-		for _, key := range keys {
-			if add {
+func (h *HashRing) generateCircle() {
+	h.Circle.Clear()
+	netWeight := h.getNetWeight()
+	it := h.Nodes.Iterator()
+
+	for it.Next() {
+		node := it.Key()
+		weight := it.Value().(uint)
+		bucketCount := (uint)(40*h.Nodes.Size()) * weight / netWeight
+		for i := (uint)(0); i < bucketCount; i++ {
+			bucket := fmt.Sprintf("%s-%d", node, i)
+			keys := getKetamaKeys(bucket)
+			for _, key := range keys {
 				h.Circle.Put(key, node)
-			} else {
-				h.Circle.Remove(key)
 			}
 		}
 	}

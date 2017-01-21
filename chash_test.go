@@ -22,20 +22,20 @@ func TestAddNode(t *testing.T) {
 	testGet(t, h, "test2", "a")
 	testGet(t, h, "test3", "a")
 
-	h.PrintStruct()
+	fmt.Printf("+%v", h)
 
 	fmt.Println("here")
 
 	h.AddNode("b", 1)
 	h.AddNode("c", 1)
-	h.PrintStruct()
+	fmt.Printf("+%v", h)
 
 	testGet(t, h, "test", "a")
 	testGet(t, h, "test1", "b")
 	testGet(t, h, "test2", "b")
 	testGet(t, h, "test3", "c")
-	testGet(t, h, "test4", "c")
+	testGet(t, h, "test4", "a")
 	testGet(t, h, "test5", "a")
 	testGet(t, h, "aaaa", "b")
-	testGet(t, h, "bbbb", "a")
+	testGet(t, h, "bbbb", "c")
 }
