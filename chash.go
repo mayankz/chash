@@ -8,6 +8,12 @@ import (
 	"github.com/mayankz/gods/utils"
 )
 
+/*
+TODO's:
+- Make thread safe
+- Check if multi- add/update/remove is needed
+*/
+
 type Node struct {
 	Name   string
 	Weight uint
@@ -25,9 +31,13 @@ func New() *HashRing {
 	return &h
 }
 
-func NewWithNodes(nodes *treemap.Map) *HashRing {
+func NewWithNodes(nodes map[string]uint) *HashRing {
 	h := New()
-	h.Nodes = nodes
+
+	for node, weight := range nodes {
+		h.Nodes.Put(node, weight)
+	}
+
 	h.generateCircle()
 	return h
 }
@@ -35,8 +45,8 @@ func NewWithNodes(nodes *treemap.Map) *HashRing {
 // returns the node key should belong to, returns false iff ring is empty
 func (h *HashRing) GetNode(key string) (node string, found bool) {
 	bkeyi, ok := h.Circle.GetCeiling(getKetamaKey(key))
-	bkey := bkeyi.(uint32)
 	if ok {
+		bkey := bkeyi.(uint32)
 		nodei, _ := h.Circle.Get(bkey)
 		node = nodei.(string)
 		return node, true
